@@ -19,3 +19,7 @@ venv/
 # OS/editor
 .DS_Store
 .vscode/
+
+# Local release marker
+.last_deployed_image
+*:Zone.Identifier
