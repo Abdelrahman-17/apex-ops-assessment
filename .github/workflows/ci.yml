@@ -1,0 +1,47 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: ruff check app tests
+      - name: Automated tests
+        run: pytest -q
+      - name: Verify failing test is caught (expected failure)
+        shell: bash
+        run: |
+          set +e
+          pytest -q tests/intentional_failure_case.py
+          result=$?
+          set -e
+          if [ "$result" -eq 0 ]; then
+            echo "ERROR: intentional failing test unexpectedly passed"
+            exit 1
+          fi
+          echo "PASS: test runner correctly returned non-zero for intentional failure (exit $result)"
+      - name: Build container image
+        run: docker build --tag apex-ops-api:${{ github.sha }} .
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: apex-ops-api:${{ github.sha }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH

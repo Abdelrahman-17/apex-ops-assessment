@@ -1,0 +1,30 @@
+services:
+  api:
+    image: ${APP_IMAGE:-apex-ops-api:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      APP_VERSION: ${APP_VERSION:-local}
+      DATABASE_PATH: /data/apex_ops.db
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    volumes:
+      - api_data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/ready', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+volumes:
+  api_data:
